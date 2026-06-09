@@ -1,5 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
+const testConnection = async () => {
+  const result = await supabase
+    .from("wallets")
+    .select("*")
+    .limit(1);
 
+  console.log("SUPABASE TEST:", JSON.stringify(result));
+};
+
+testConnection();
 console.log("SUPABASE_URL =", process.env.SUPABASE_URL);
 console.log(
   "SERVICE_ROLE_EXISTS =",
@@ -87,12 +96,14 @@ console.log("SERVICE_KEY EXISTS =", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
     });
 
   }catch (err) {
-  console.error("FULL ERROR:", err);
+  console.error("FULL ERROR:", JSON.stringify(err, null, 2));
+  console.error("MESSAGE:", err.message);
+  console.error("CAUSE:", err.cause);
 
   return res.status(500).json({
     success: false,
-    error: err.message,
-    stack: err.stack
+    message: err.message,
+    cause: String(err.cause)
   });
 }
-}
+  }
