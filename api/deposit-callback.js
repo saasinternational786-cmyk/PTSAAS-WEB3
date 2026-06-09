@@ -19,7 +19,22 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+console.log("URL VALUE:", process.env.SUPABASE_URL);
+console.log(
+  "KEY EXISTS:",
+  !!process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
+try {
+  const test = await supabase
+    .from("wallets")
+    .select("*")
+    .limit(1);
+
+  console.log("SUPABASE TEST:", JSON.stringify(test));
+} catch (e) {
+  console.log("SUPABASE TEST ERROR:", e);
+}
 export default async function handler(req, res) {
   console.log("ENV CHECK");
 console.log(
