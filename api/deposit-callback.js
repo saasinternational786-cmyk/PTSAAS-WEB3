@@ -1,11 +1,27 @@
 import { createClient } from "@supabase/supabase-js";
 
+console.log("SUPABASE_URL =", process.env.SUPABASE_URL);
+console.log(
+  "SERVICE_ROLE_EXISTS =",
+  !!process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
+  console.log("ENV CHECK");
+console.log(
+  "SUPABASE_URL:",
+  process.env.SUPABASE_URL ? "FOUND" : "MISSING"
+);
+
+console.log(
+  "SUPABASE_SERVICE_ROLE_KEY:",
+  process.env.SUPABASE_SERVICE_ROLE_KEY ? "FOUND" : "MISSING"
+);
     res.setHeader("Access-Control-Allow-Origin", "*");
 res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
 res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -46,7 +62,8 @@ console.log("SERVICE_KEY EXISTS =", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
       .from("wallets")
       .select("*")
       .eq("user_id", userId)
-      .single();
+      .limit(1)
+.maybeSingle();
 
     if (walletError || !wallet) {
       return res.status(404).json({
@@ -69,11 +86,13 @@ console.log("SERVICE_KEY EXISTS =", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
       credited: amount
     });
 
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
+  }catch (err) {
+  console.error("FULL ERROR:", err);
+
+  return res.status(500).json({
+    success: false,
+    error: err.message,
+    stack: err.stack
+  });
+}
 }
