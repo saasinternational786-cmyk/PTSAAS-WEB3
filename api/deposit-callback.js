@@ -1,58 +1,31 @@
 import { createClient } from "@supabase/supabase-js";
-const testConnection = async () => {
-  const result = await supabase
-    .from("wallets")
-    .select("*")
-    .limit(1);
-
-  console.log("SUPABASE TEST:", JSON.stringify(result));
-};
-
-testConnection();
-console.log("SUPABASE_URL =", process.env.SUPABASE_URL);
-console.log(
-  "SERVICE_ROLE_EXISTS =",
-  !!process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-console.log("URL VALUE:", process.env.SUPABASE_URL);
-console.log(
-  "KEY EXISTS:",
-  !!process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
-try {
-  const test = await supabase
-    .from("wallets")
-    .select("*")
-    .limit(1);
-
-  console.log("SUPABASE TEST:", JSON.stringify(test));
-} catch (e) {
-  console.log("SUPABASE TEST ERROR:", e);
-}
 export default async function handler(req, res) {
   console.log("ENV CHECK");
-console.log(
-  "SUPABASE_URL:",
-  process.env.SUPABASE_URL ? "FOUND" : "MISSING"
-);
 
-console.log(
-  "SUPABASE_SERVICE_ROLE_KEY:",
-  process.env.SUPABASE_SERVICE_ROLE_KEY ? "FOUND" : "MISSING"
-);
-    res.setHeader("Access-Control-Allow-Origin", "*");
-res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  console.log(
+    "SUPABASE_URL:",
+    process.env.SUPABASE_URL ? "FOUND" : "MISSING"
+  );
 
-if (req.method === "OPTIONS") {
-  return res.status(200).end();
-}
+  console.log(
+    "SUPABASE_SERVICE_ROLE_KEY:",
+    process.env.SUPABASE_SERVICE_ROLE_KEY ? "FOUND" : "MISSING"
+  );
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
@@ -62,11 +35,18 @@ if (req.method === "OPTIONS") {
 
   try {
     const { userId, txHash, amount, coin } = req.body;
-    console.log("BODY:", req.body);
-    console.log("SUPABASE_URL =", process.env.SUPABASE_URL);
-console.log("SERVICE_KEY EXISTS =", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // Save deposit
+    console.log("BODY:", req.body);
+
+    // TEST SUPABASE CONNECTION
+    const test = await supabase
+      .from("wallets")
+      .select("*")
+      .limit(1);
+
+    console.log("SUPABASE TEST:", JSON.stringify(test));
+
+    // SAVE DEPOSIT
     const { error: depositError } = await supabase
       .from("deposits")
       .insert([
@@ -79,46 +59,72 @@ console.log("SERVICE_KEY EXISTS =", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
         }
       ]);
 
-    if (depositError) throw depositError;
+    console.log("DEPOSIT ERROR:", depositError);
 
-    // Update wallet balance
-    const { data: wallet, error: walletError } = await supabase
+    if (depositError) {
+      throw depositError;
+    }
+
+    // GET WALLET
+    const {
+      data: wallet,
+      error: walletError
+    } = await supabase
       .from("wallets")
       .select("*")
       .eq("user_id", userId)
-      .limit(1)
-.maybeSingle();
+      .maybeSingle();
 
-    if (walletError || !wallet) {
+    console.log("WALLET ERROR:", walletError);
+    console.log("WALLET DATA:", wallet);
+
+    if (walletError) {
+      throw walletError;
+    }
+
+    if (!wallet) {
       return res.status(404).json({
         success: false,
         error: "Wallet not found"
       });
     }
 
-    let newBalance = Number(wallet.usdt_balance || 0) + Number(amount);
+    const newBalance =
+      Number(wallet.usdt_balance || 0) + Number(amount);
 
-    await supabase
+    // UPDATE WALLET
+    const { error: updateError } = await supabase
       .from("wallets")
       .update({
         usdt_balance: newBalance
       })
       .eq("user_id", userId);
 
+    console.log("UPDATE ERROR:", updateError);
+
+    if (updateError) {
+      throw updateError;
+    }
+
     return res.status(200).json({
       success: true,
-      credited: amount
+      credited: amount,
+      newBalance
     });
 
-  }catch (err) {
-  console.error("FULL ERROR:", JSON.stringify(err, null, 2));
-  console.error("MESSAGE:", err.message);
-  console.error("CAUSE:", err.cause);
+  } catch (err) {
+    console.error("FULL ERROR:", JSON.stringify(err, null, 2));
+    console.error("MESSAGE:", err.message);
+    console.error("DETAILS:", err.details);
+    console.error("HINT:", err.hint);
+    console.error("CODE:", err.code);
 
-  return res.status(500).json({
-    success: false,
-    message: err.message,
-    cause: String(err.cause)
-  });
-}
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+      details: err.details,
+      hint: err.hint,
+      code: err.code
+    });
   }
+}
