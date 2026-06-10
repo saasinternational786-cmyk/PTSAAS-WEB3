@@ -859,21 +859,22 @@ function App() {
     loadUsers();
     loadDepositRequests();
 
-    const channel = supabase
-      .channel("otc-orders")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "otc_orders",
-        },
-        () => {
-          loadOrders();
-        }
-      )
-      .subscribe();
-
+    /*
+const channel = supabase
+  .channel("otc-orders")
+  .on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "otc_orders",
+    },
+    () => {
+      loadOrders();
+    }
+  )
+  .subscribe();
+*/
     return () => {
       supabase.removeChannel(channel);
     };
